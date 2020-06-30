@@ -2,14 +2,18 @@ package players
 
 import (
 	"../connection"
+	"../servers/serverinterfaces"
 	"./actions"
+	"bytes"
+	"encoding/gob"
 	"fmt"
 	"math/rand"
+	"net"
 	"time"
-	"../servers/serverrpc"
 )
 
 type Action actions.Action
+type ServerResponse serverinterfaces.ServerResponse
 
 type Player struct {
 	// Player variables
@@ -23,15 +27,16 @@ type Player struct {
 	actionList [] Action
 
 	// Connection variables
-	rttLogs [] int64
-	tick       int
-	tickTime   int
+	rttLogs     [] int64
+	tick        int
+	tickTime    int
 	lostPackets int
-	connection connection.Connection
+	conn	    *net.UDPConn
+	dst         *net.UDPAddr
 }
 
-func createPlayerRequest(player Player) serverrpc.PlayerRequest {
-	request := serverrpc.PlayerRequest{
+func createPlayerRequest(player Player) serverinterfaces.PlayerRequest {
+	request := serverinterfaces.PlayerRequest{
 		Id:               player.id,
 		UniqueIdentifier: player.uniqueIdentifier,
 		X:                player.x,
@@ -46,9 +51,25 @@ func createPlayerRequest(player Player) serverrpc.PlayerRequest {
 
 func (player *Player) callServer() {
 	before := time.Now()
-	response := serverrpc.ServerResponse{}
+
 	request := createPlayerRequest(*player)
-	player.connection.Call("TServer.UpdatePlayerState", request, &response)
+	var sendBuf bytes.Buffer
+	encoder := gob.NewEncoder(&sendBuf)
+	encoder.Encode(request)
+
+	go player.conn.Write(sendBuf.Bytes())
+
+	recvBuf := make([]byte, 1024)
+	n, _, err := player.conn.ReadFromUDP(recvBuf[:])
+	if err != nil{
+		fmt.Println(err)
+	}
+
+	dec := gob.NewDecoder(bytes.NewReader(recvBuf[:n]))
+	response := ServerResponse{}
+	dec.Decode(&response)
+	//fmt.Printf("Client: %+v\n", response)
+
 	after := time.Now()
 	player.rttLogs = append(player.rttLogs, RTT(before, after))
 	if response.Tick != player.tick {player.lostPackets++}
@@ -68,9 +89,11 @@ func (player *Player) Run() {
 }
 
 func (player *Player) JoinGame(connection *connection.Connection, refreshRate int) {
-	player.connection = *connection
 	player.tickTime = refreshRate
-	go fmt.Printf("%d - Connected to %x with tick time %d\n", player.id, player.connection, player.tickTime)
+	player.dst, _ = net.ResolveUDPAddr("udp", connection.Address+":"+connection.Port)
+	player.conn, _ = net.DialUDP("udp", nil, player.dst)
+
+	go fmt.Printf("%d - Connected to %x with tick time %d\n", player.id, player.dst, player.tickTime)
 	player.Run()
 }
 

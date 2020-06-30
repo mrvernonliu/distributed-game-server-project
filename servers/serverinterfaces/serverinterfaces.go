@@ -1,4 +1,4 @@
-package serverrpc
+package serverinterfaces
 
 import (
 	"../../players/actions"

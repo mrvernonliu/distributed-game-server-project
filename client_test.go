@@ -27,13 +27,13 @@ func tickToTime(tickRate int) float32 {
 func TestCreatePlayers(t *testing.T) {
 	conn := connection.CreateConnection(serverInfo.protocol, serverInfo.address, serverInfo.port)
 	gameServer := traditional.StartServer(*conn)
-	tickTime := int(tickToTime(50))
+	tickTime := int(tickToTime(90))
 	time.Sleep(1*time.Second)
 	fmt.Println(gameServer)
 	for i := 0; i < 100; i++ {
 		player := players.CreatePlayer(i)
 		go player.JoinGame(conn, tickTime)
-		time.Sleep(5*time.Millisecond)
+		time.Sleep(1*time.Millisecond)
 	}
 	time.Sleep(60*time.Second)
 }

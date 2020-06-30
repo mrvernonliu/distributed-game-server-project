@@ -1,30 +1,34 @@
 package traditional
 
 import (
-	"../serverrpc"
 	"../../connection"
-	//"fmt"
-	"log"
+	"../serverinterfaces"
+	"bytes"
+	"encoding/gob"
+	"fmt"
 	"math/rand"
 	"net"
-	"net/rpc"
-	"net/http"
 	"time"
 )
 
-type PlayerRequest serverrpc.PlayerRequest
-type ServerResponse serverrpc.ServerResponse
+type PlayerRequest serverinterfaces.PlayerRequest
+type ServerResponse serverinterfaces.ServerResponse
+
 
 type TServer struct {
 	Id int
+
+	conn *net.UDPConn
+	dst  *net.UDPAddr
 }
 
 func (server *TServer) validateAction(request *PlayerRequest) {
 	//go fmt.Printf("Server validating request: %d - %d", request.Id, request.Tick)
 }
 
-func (server *TServer) UpdatePlayerState(request *PlayerRequest, response *ServerResponse) error {
-	server.validateAction(request);
+func createResponse(request PlayerRequest) ServerResponse {
+	//server.validateAction(request)
+	response := ServerResponse{}
 	response.Id = request.Id
 	response.Tick = request.Tick
 	response.Direction = request.Direction
@@ -32,24 +36,41 @@ func (server *TServer) UpdatePlayerState(request *PlayerRequest, response *Serve
 	response.UniqueIdentifier = request.UniqueIdentifier
 	response.X = request.X
 	response.Y = request.Y
+	return response
+}
+
+func (server *TServer) serve() error {
+	fmt.Println("Server listening")
+	for {
+		// Read from UDP
+		recvBuf := make([]byte, 1024)
+		n, client, _ := server.conn.ReadFromUDP(recvBuf[:])
+		dec := gob.NewDecoder(bytes.NewReader(recvBuf[:n]))
+		request := PlayerRequest{}
+		dec.Decode(&request)
+
+		//Make response
+		response := createResponse(request)
+
+		//send response
+		var sendBuf bytes.Buffer
+		encoder := gob.NewEncoder(&sendBuf)
+		encoder.Encode(response)
+		server.conn.WriteToUDP(sendBuf.Bytes(), client)
+
+	}
 	return nil
 }
 
-func (server *TServer) serve(connection connection.Connection) {
-	rpc.Register(server)
-	rpc.HandleHTTP()
-	l, e := net.Listen(connection.Protocol, connection.Address + ":" + connection.Port)
-	if e != nil {
-		log.Fatal("listen error:",e)
-	}
-	go http.Serve(l, nil)
-}
 
 
 func StartServer(connection connection.Connection) *TServer {
 	rand.Seed(time.Now().UTC().UnixNano())
 	server := TServer{}
 	server.Id = rand.Int()
-	server.serve(connection)
+	server.dst, _ = net.ResolveUDPAddr("udp", connection.Address+":"+connection.Port)
+	server.conn, _ = net.ListenUDP("udp", server.dst)
+
+	go server.serve()
 	return &server
 }
