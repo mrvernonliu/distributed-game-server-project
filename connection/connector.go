@@ -12,8 +12,8 @@ type Connection struct {
 	Port string
 }
 
-func (connection *Connection) call(rpcname string, args interface{}, reply interface{}) bool {
-	c, err := rpc.DialHTTP(connection.Protocol, connection.Address+connection.Port)
+func (connection *Connection) Call(rpcname string, args interface{}, reply interface{}) bool {
+	c, err := rpc.DialHTTP(connection.Protocol, connection.Address+":"+connection.Port)
 	if err != nil {
 		log.Fatal("dialing:", err)
 	}
