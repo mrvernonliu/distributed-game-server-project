@@ -20,17 +20,22 @@ var serverInfo = ServerInfo{
 	port: "8000",
 }
 
+func tickToTime(tickRate int) float32 {
+	return float32(1000.0 / tickRate)
+}
+
 func TestCreatePlayers(t *testing.T) {
 	conn := connection.CreateConnection(serverInfo.protocol, serverInfo.address, serverInfo.port)
 	gameServer := traditional.StartServer(*conn)
+	tickTime := int(tickToTime(50))
 	time.Sleep(1*time.Second)
 	fmt.Println(gameServer)
 	for i := 0; i < 100; i++ {
 		player := players.CreatePlayer(i)
-		go player.JoinGame(conn)
-		//fmt.Printf("%+v\n", *player)
+		go player.JoinGame(conn, tickTime)
+		time.Sleep(5*time.Millisecond)
 	}
-	time.Sleep(10*time.Second)
+	time.Sleep(60*time.Second)
 }
 
 
