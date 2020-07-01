@@ -3,6 +3,7 @@ package traditional
 import (
 	"../../connection"
 	"../serverinterfaces"
+	"../../game"
 	"bytes"
 	"encoding/gob"
 	"fmt"
@@ -11,33 +12,18 @@ import (
 	"time"
 )
 
-type PlayerRequest serverinterfaces.PlayerRequest
-type ServerResponse serverinterfaces.ServerResponse
-
-
 type TServer struct {
-	Id int
+	Id   int
+	Game *game.Game
 
 	conn *net.UDPConn
 	dst  *net.UDPAddr
 }
 
-func (server *TServer) validateAction(request *PlayerRequest) {
+func (server *TServer) validateAction(request *serverinterfaces.PlayerRequest) {
 	//go fmt.Printf("Server validating request: %d - %d", request.Id, request.Tick)
 }
 
-func createResponse(request PlayerRequest) ServerResponse {
-	//server.validateAction(request)
-	response := ServerResponse{}
-	response.Id = request.Id
-	response.Tick = request.Tick
-	response.Direction = request.Direction
-	response.Alive = request.Alive
-	response.UniqueIdentifier = request.UniqueIdentifier
-	response.X = request.X
-	response.Y = request.Y
-	return response
-}
 
 func (server *TServer) serve() error {
 	fmt.Println("Server listening")
@@ -46,11 +32,15 @@ func (server *TServer) serve() error {
 		recvBuf := make([]byte, 1024)
 		n, client, _ := server.conn.ReadFromUDP(recvBuf[:])
 		dec := gob.NewDecoder(bytes.NewReader(recvBuf[:n]))
-		request := PlayerRequest{}
+		request := serverinterfaces.PlayerRequest{}
 		dec.Decode(&request)
+		//go fmt.Printf("Server - request: %+v %+v\n", request, request.ActionList)
 
 		//Make response
-		response := createResponse(request)
+		response := server.Game.UpdateGameState(request)
+
+		//go fmt.Printf("server- response: %+v\n", response)
+		//go fmt.Printf("server- response: %d %t\n", response.Id, response.Alive)
 
 		//send response
 		var sendBuf bytes.Buffer
@@ -70,6 +60,7 @@ func StartServer(connection connection.Connection) *TServer {
 	server.Id = rand.Int()
 	server.dst, _ = net.ResolveUDPAddr("udp", connection.Address+":"+connection.Port)
 	server.conn, _ = net.ListenUDP("udp", server.dst)
+	server.Game = game.CreateGame()
 
 	go server.serve()
 	return &server

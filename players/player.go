@@ -1,30 +1,38 @@
 package players
 
 import (
+	"./actioninterfaces"
 	"../connection"
 	"../servers/serverinterfaces"
-	"./actions"
+	"../game/gameinterfaces"
 	"bytes"
 	"encoding/gob"
 	"fmt"
 	"math/rand"
 	"net"
+	"sync"
 	"time"
 )
 
-type Action actions.Action
+
 type ServerResponse serverinterfaces.ServerResponse
 
 type Player struct {
 	// Player variables
+	stateMux sync.Mutex
 	id int
 	uniqueIdentifier int
 	x int
 	y int
 	direction int
-	alive bool
+	Alive bool
 
-	actionList [] Action
+	actionMux sync.Mutex
+	actionList [] actioninterfaces.ActionUpdate
+
+	// Server state
+	players [] gameinterfaces.InGamePlayer
+	phase int
 
 	// Connection variables
 	rttLogs     [] int64
@@ -42,8 +50,8 @@ func createPlayerRequest(player Player) serverinterfaces.PlayerRequest {
 		X:                player.x,
 		Y:                player.y,
 		Direction:        player.direction,
-		Alive:            player.alive,
-		//ActionList:       player.actionList,
+		Alive:            player.Alive,
+		ActionList:       player.actionList,
 		Tick:             player.tick,
 	}
 	return request
@@ -59,7 +67,7 @@ func (player *Player) callServer() {
 
 	go player.conn.Write(sendBuf.Bytes())
 
-	recvBuf := make([]byte, 1024)
+	recvBuf := make([]byte, 4096)
 	n, _, err := player.conn.ReadFromUDP(recvBuf[:])
 	if err != nil{
 		fmt.Println(err)
@@ -68,23 +76,58 @@ func (player *Player) callServer() {
 	dec := gob.NewDecoder(bytes.NewReader(recvBuf[:n]))
 	response := ServerResponse{}
 	dec.Decode(&response)
-	//fmt.Printf("Client: %+v\n", response)
+	//go fmt.Printf("Client %d: %+v\n\n\n", player.id, response)
+	//go fmt.Printf("Client %d - response: %d %t %+v\n\n\n", player.id, response.Id, response.Alive, response)
 
 	after := time.Now()
+	player.stateMux.Lock()
 	player.rttLogs = append(player.rttLogs, RTT(before, after))
-	if response.Tick != player.tick {player.lostPackets++}
+	//go fmt.Printf("player- response: %d %t\n", response.Id, response.Alive)
+	if response.Tick != player.tick || response.Id != player.id {player.lostPackets++}
+	if response.Alive == false {
+		player.Alive = false
+		return
+	}
+	if response.Tick == player.tick && response.Id == player.id {
+		player.players = response.Players
+	}
+
+	player.stateMux.Unlock()
+
+	//player.actionMux.Lock()
+	player.actionList = []actioninterfaces.ActionUpdate{}
+	//player.actionMux.Unlock()
 	//fmt.Printf("%d %d\n",response.Tick, player.tick)
+}
+
+func (player *Player) setAction() {
+	//player.actionMux.Lock()
+	//fmt.Println("in setAction mux")
+	actionUpdate := GetRandomAction(player.id, player.players)
+	if actionUpdate.Action == -1 {return}
+	player.actionList = append(player.actionList, actionUpdate)
+	//go fmt.Println(player.actionList)
+	//player.actionMux.Unlock()
 }
 
 func (player *Player) Run() {
 	sleepTime := time.Duration(player.tickTime)* time.Millisecond
-	for i := 0; i < 100; i++ {
+	for {
+		//go fmt.Printf("%d running\n", player.id)
+		if !player.Alive {
+			//go fmt.Printf("%d - eliminated\n", player.id)
+			break
+		}
 		player.tick++
+		if len(player.players) == 100 {
+			go player.setAction()
+		}
 		go player.callServer()
 		time.Sleep(sleepTime)
+		//if player.tick == 5000 {player.Alive = false}
 	}
 	time.Sleep(5*time.Second)
-	fmt.Println(player.rttLogs)
+	//fmt.Print(player.rttLogs)
 	fmt.Printf("Loss: %d\n", player.lostPackets)
 }
 
@@ -93,7 +136,7 @@ func (player *Player) JoinGame(connection *connection.Connection, refreshRate in
 	player.dst, _ = net.ResolveUDPAddr("udp", connection.Address+":"+connection.Port)
 	player.conn, _ = net.DialUDP("udp", nil, player.dst)
 
-	go fmt.Printf("%d - Connected to %x with tick time %d\n", player.id, player.dst, player.tickTime)
+	//go fmt.Printf("%d - Connected to %x with tick time %d\n", player.id, player.dst, player.tickTime)
 	player.Run()
 }
 
@@ -105,12 +148,14 @@ func CreatePlayer(id int) *Player {
 	player.uniqueIdentifier = rand.Int()
 	player.x = rand.Intn(200 - 0)
 	player.y = rand.Intn(200 - 0)
-	player.actionList = []Action{}
+	player.actionList = []actioninterfaces.ActionUpdate{}
+	player.players = []gameinterfaces.InGamePlayer{}
 	player.rttLogs = []int64{}
-	player.direction = actions.GetRandomDirection()
+	player.direction = GetRandomDirection()
 	player.tick = 0
 	player.lostPackets = 0
-	player.alive = true
+	player.Alive = true
+	player.phase = 0
 
 	return player
 }

@@ -1,10 +1,9 @@
 package serverinterfaces
 
 import (
-	"../../players/actions"
+	"../../players/actioninterfaces"
+	"../../game/gameinterfaces"
 )
-
-type Action actions.Action
 
 type PlayerRequest struct {
 	Id int
@@ -14,7 +13,7 @@ type PlayerRequest struct {
 	Direction int
 	Alive bool
 
-	ActionList [] Action
+	ActionList [] actioninterfaces.ActionUpdate
 
 	Tick int
 }
@@ -26,6 +25,9 @@ type ServerResponse struct {
 	Y int
 	Direction int
 	Alive bool
+
+	Players []gameinterfaces.InGamePlayer
+	GamePhase int
 
 	Tick int
 }
