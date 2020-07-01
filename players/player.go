@@ -119,9 +119,6 @@ func (player *Player) Run() {
 			break
 		}
 		player.tick++
-		if len(player.players) == 100 {
-			go player.setAction()
-		}
 		go player.callServer()
 		time.Sleep(sleepTime)
 		//if player.tick == 5000 {player.Alive = false}
@@ -131,12 +128,26 @@ func (player *Player) Run() {
 	//fmt.Printf("Loss: %d\n", player.lostPackets)
 }
 
+// Lets the same number of actions occur regardless of server tick rate
+func (player *Player) AsyncSetActions() {
+	for {
+		if !player.Alive {
+			break
+		}
+		if len(player.players) == 100 {
+			go player.setAction()
+		}
+		time.Sleep(500*time.Millisecond);
+	}
+}
+
 func (player *Player) JoinGame(connection *connection.Connection, refreshRate int) {
 	player.tickTime = refreshRate
 	player.dst, _ = net.ResolveUDPAddr("udp", connection.Address+":"+connection.Port)
 	player.conn, _ = net.DialUDP("udp", nil, player.dst)
 
 	//go fmt.Printf("%d - Connected to %x with tick time %d\n", player.id, player.dst, player.tickTime)
+	go player.AsyncSetActions()
 	player.Run()
 }
 

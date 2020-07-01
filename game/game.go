@@ -54,7 +54,6 @@ func (game *Game) UpdateGameState(request serverinterfaces.PlayerRequest) server
 		}
 	} else {
 		if !game.Players[response.Id].Alive {
-			//go fmt.Printf("Setting %d dead\n", response.Id)
 			response.Alive = false
 		} else {
 			actions := request.ActionList

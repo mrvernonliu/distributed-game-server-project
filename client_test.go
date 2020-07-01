@@ -50,11 +50,11 @@ func displayPlayerStatistics(playerList []*players.Player) {
 	fmt.Printf("MaxRTT: %d - MaxLoss: %d\n", maxRtt, maxLoss)
 }
 
-func TestCreatePlayers(t *testing.T) {
+func TestGame(t *testing.T) {
 	conn := connection.CreateConnection(serverInfo.protocol, serverInfo.address, serverInfo.port)
 	gameServer := traditional.StartServer(*conn)
 	game := gameServer.Game
-	tickTime := int(tickToTime(12))
+	tickTime := int(tickToTime(71))
 	time.Sleep(1*time.Second)
 	fmt.Println(gameServer)
 	var playerList []*players.Player
