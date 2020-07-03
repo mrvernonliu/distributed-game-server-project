@@ -54,13 +54,13 @@ func (server *TServer) serve() error {
 
 
 
-func StartServer(connection connection.Connection) *TServer {
+func StartServer(connection connection.Connection, artificalDelay int) *TServer {
 	rand.Seed(time.Now().UTC().UnixNano())
 	server := TServer{}
 	server.Id = rand.Int()
-	server.dst, _ = net.ResolveUDPAddr("udp", connection.Address+":"+connection.Port)
+	server.dst, _ = net.ResolveUDPAddr("udp", ":"+connection.Port)
 	server.conn, _ = net.ListenUDP("udp", server.dst)
-	server.Game = game.CreateGame()
+	server.Game = game.CreateGame(artificalDelay)
 
 	go server.serve()
 	return &server

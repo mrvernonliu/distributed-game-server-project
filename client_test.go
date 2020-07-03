@@ -1,11 +1,11 @@
 package project
 
 import (
-	"./connection"
 	"./players"
-	"./servers/traditional"
 	"fmt"
 	"testing"
+	"./servers/traditional"
+	"./connection"
 	"time"
 )
 
@@ -13,11 +13,6 @@ type ServerInfo struct {
 	protocol string
 	address string
 	port string
-}
-var serverInfo = ServerInfo{
-	protocol: "tcp",
-	address: "127.0.0.1",
-	port: "8000",
 }
 
 type playerStatistic struct {
@@ -50,11 +45,17 @@ func displayPlayerStatistics(playerList []*players.Player) {
 	fmt.Printf("MaxRTT: %d - MaxLoss: %d\n", maxRtt, maxLoss)
 }
 
-func TestGame(t *testing.T) {
+func TestGame_Internal_Traditional(t *testing.T) {
+	var serverInfo = ServerInfo{
+		protocol: "udp",
+		address: "127.0.0.1",
+		port: "8000",
+	}
 	conn := connection.CreateConnection(serverInfo.protocol, serverInfo.address, serverInfo.port)
-	gameServer := traditional.StartServer(*conn)
+	artificialDelay := 1
+	gameServer := traditional.StartServer(*conn, artificialDelay)
 	game := gameServer.Game
-	tickTime := int(tickToTime(71))
+	tickTime := int(tickToTime(60))
 	time.Sleep(1*time.Second)
 	fmt.Println(gameServer)
 	var playerList []*players.Player
@@ -73,4 +74,25 @@ func TestGame(t *testing.T) {
 	displayPlayerStatistics(playerList)
 }
 
+func TestGame_External_Traditional(t *testing.T) {
+	var serverInfo = ServerInfo{
+		protocol: "udp",
+		address: "10.0.0.55",
+		port: "8000",
+	}
+	conn := connection.CreateConnection(serverInfo.protocol, serverInfo.address, serverInfo.port)
+	tickTime := int(tickToTime(20))
+
+	var playerList []*players.Player
+
+	for i := 0; i < 100; i++ {
+		player := players.CreatePlayer(i)
+		playerList = append(playerList, player)
+		go player.JoinGame(conn, tickTime)
+		time.Sleep(1*time.Millisecond)
+	}
+
+	time.Sleep(30*time.Second)
+	displayPlayerStatistics(playerList)
+}
 

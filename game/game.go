@@ -14,6 +14,7 @@ type Game struct {
 	Id int
 
 	phase int
+	artificialDelay time.Duration
 
 	mux     sync.Mutex
 	Players map[int]gameinterfaces.InGamePlayer
@@ -71,6 +72,7 @@ func (game *Game) UpdateGameState(request serverinterfaces.PlayerRequest) server
 					}
 				}
 			}
+			time.Sleep(game.artificialDelay) // Adding artificial delay to simulate action validation
 		}
  	}
 	var updatedPlayerList []gameinterfaces.InGamePlayer
@@ -86,7 +88,7 @@ func (game *Game) UpdateGameState(request serverinterfaces.PlayerRequest) server
 
 func (game *Game) showState() {
 	for {
-		//fmt.Println(game.Players)
+		go fmt.Println(game.Players)
 		alive := -1
 		for i := 0; i < 100; i++ {
 			if game.Players[i].Alive {
@@ -113,7 +115,7 @@ func (game *Game) IsFinished() bool {
 
 
 
-func CreateGame() *Game {
+func CreateGame(artificialDelay int) *Game {
 	fmt.Println("Creating game")
 	rand.Seed(time.Now().UTC().UnixNano())
 	game := Game{}
@@ -121,7 +123,7 @@ func CreateGame() *Game {
 	game.Players = make(map[int]gameinterfaces.InGamePlayer)
 	game.phase = 0
 	game.mux = sync.Mutex{}
-
+	game.artificialDelay = time.Duration(artificialDelay) * time.Nanosecond
 	go game.showState()
 
 	return &game

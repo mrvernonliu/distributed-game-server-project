@@ -124,8 +124,8 @@ func (player *Player) Run() {
 		//if player.tick == 5000 {player.Alive = false}
 	}
 	time.Sleep(5*time.Second)
-	//fmt.Print(len(player.rttLogs))
-	//fmt.Printf("Loss: %d\n", player.lostPackets)
+	go fmt.Print(player.rttLogs)
+	go fmt.Printf("Loss: %d\n", player.lostPackets)
 }
 
 // Lets the same number of actions occur regardless of server tick rate
@@ -146,7 +146,7 @@ func (player *Player) JoinGame(connection *connection.Connection, refreshRate in
 	player.dst, _ = net.ResolveUDPAddr("udp", connection.Address+":"+connection.Port)
 	player.conn, _ = net.DialUDP("udp", nil, player.dst)
 
-	//go fmt.Printf("%d - Connected to %x with tick time %d\n", player.id, player.dst, player.tickTime)
+	go fmt.Printf("%d - Connected to %+v with tick time %d\n", player.id, player.dst, player.tickTime)
 	go player.AsyncSetActions()
 	player.Run()
 }
