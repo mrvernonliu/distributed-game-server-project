@@ -64,7 +64,7 @@ func (player *Player) callServer() {
 	var sendBuf bytes.Buffer
 	encoder := gob.NewEncoder(&sendBuf)
 	encoder.Encode(request)
-
+	//fmt.Printf("Player %d request: %+v\n", player.id, request)
 	go player.conn.Write(sendBuf.Bytes())
 
 	recvBuf := make([]byte, 4096)

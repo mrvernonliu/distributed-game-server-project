@@ -3,8 +3,10 @@ package project
 import (
 	"./players"
 	"fmt"
+	"strconv"
 	"testing"
 	"./servers/traditional"
+	"./servers/proposed"
 	"./connection"
 	"time"
 )
@@ -96,3 +98,38 @@ func TestGame_External_Traditional(t *testing.T) {
 	displayPlayerStatistics(playerList)
 }
 
+func TestGame_Internal_Distributed(t *testing.T) {
+	var serverInfo = ServerInfo{
+		protocol: "udp",
+		address: "127.0.0.1",
+		port: "8000",
+	}
+	artificialDelay := 1
+	var workerList []proposed.Worker
+	for i := 5; i < 10; i++ {
+		conn := connection.CreateConnection("udp", "127.0.0.1", "800" + strconv.Itoa(i))
+		worker := proposed.StartWorker(*conn, artificialDelay)
+		workerList = append(workerList, *worker)
+	}
+	workerPool := proposed.CreateWorkerPool(workerList)
+
+	conn := connection.CreateConnection(serverInfo.protocol, serverInfo.address, serverInfo.port)
+	gameServer := proposed.StartServer(*conn, *workerPool, artificialDelay)
+	game := gameServer.Game
+
+	tickTime := int(tickToTime(30))
+	var playerList []*players.Player
+
+	for i := 0; i < 100; i++ {
+		player := players.CreatePlayer(i)
+		playerList = append(playerList, player)
+		go player.JoinGame(conn, tickTime)
+		time.Sleep(1*time.Millisecond)
+	}
+
+	for !game.IsFinished() {
+		time.Sleep(5*time.Second)
+	}
+
+	displayPlayerStatistics(playerList)
+}
