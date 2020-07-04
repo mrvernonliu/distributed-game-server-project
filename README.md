@@ -11,9 +11,11 @@ In this case we are going to run the server on a different machine. To do this s
 ```scp -r distributed-game-server-project/ vernon@10.0.0.55:```
 
 And then start only the server using the following command:
+
 ```go run main/start_traditional_server.go```
 
 Make sure you change the ip in your test case to match your server ip and then run the following command from your local machine
+
 ```go test -run External_Traditional```
 
 ##### Distributed Server
