@@ -1,3 +1,5 @@
+Oh man.... this code is messy and fragile. If I ever become an Italian chef I could probably put a picture of this code on the menu as the spaghetti.
+
 # Distributed game server for CSC462
 The idea of this project is to use a distributed system to increase the tick rate for games that utilize a large amount of players.
 
