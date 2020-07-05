@@ -133,3 +133,26 @@ func TestGame_Internal_Distributed(t *testing.T) {
 
 	displayPlayerStatistics(playerList)
 }
+
+
+func TestGame_External_Distributed(t *testing.T) {
+	var serverInfo = ServerInfo{
+		protocol: "udp",
+		address: "192.168.0.20",
+		port: "8000",
+	}
+	conn := connection.CreateConnection(serverInfo.protocol, serverInfo.address, serverInfo.port)
+	tickTime := int(tickToTime(60))
+
+	var playerList []*players.Player
+
+	for i := 0; i < 100; i++ {
+		player := players.CreatePlayer(i)
+		playerList = append(playerList, player)
+		go player.JoinGame(conn, tickTime)
+		time.Sleep(1*time.Millisecond)
+	}
+
+	time.Sleep(30*time.Second)
+	displayPlayerStatistics(playerList)
+}

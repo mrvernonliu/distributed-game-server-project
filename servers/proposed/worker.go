@@ -15,10 +15,10 @@ import (
 type Worker struct {
 	Id   int
 
-	conn *net.UDPConn
-	dst  *net.UDPAddr
+	Conn    *net.UDPConn
+	Dst     *net.UDPAddr
 	Address string
-	Port string
+	Port    string
 }
 
 
@@ -73,7 +73,7 @@ func (worker *Worker) serve() {
 	for {
 		// Read from UDP
 		recvBuf := make([]byte, 4096)
-		n, client, _ := worker.conn.ReadFromUDP(recvBuf[:])
+		n, client, _ := worker.Conn.ReadFromUDP(recvBuf[:])
 		dec := gob.NewDecoder(bytes.NewReader(recvBuf[:n]))
 		request := WorkerRequest{}
 		dec.Decode(&request)
@@ -83,7 +83,7 @@ func (worker *Worker) serve() {
 		var sendBuf bytes.Buffer
 		encoder := gob.NewEncoder(&sendBuf)
 		encoder.Encode(response)
-		worker.conn.WriteToUDP(sendBuf.Bytes(), client)
+		worker.Conn.WriteToUDP(sendBuf.Bytes(), client)
 	}
 }
 
@@ -94,8 +94,8 @@ func StartWorker(connection connection.Connection, artificalDelay int) *Worker {
 	worker.Id = rand.Int()
 	worker.Address = connection.Address
 	worker.Port = connection.Port
-	worker.dst, _ = net.ResolveUDPAddr("udp", ":"+connection.Port)
-	worker.conn, _ = net.ListenUDP("udp", worker.dst)
+	worker.Dst, _ = net.ResolveUDPAddr("udp", ":"+connection.Port)
+	worker.Conn, _ = net.ListenUDP("udp", worker.Dst)
 
 	go worker.serve()
 	return &worker
