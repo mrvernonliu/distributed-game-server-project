@@ -35,11 +35,11 @@ type Player struct {
 	phase int
 
 	// Connection variables
-	rttLogs     [] int
+	RttLogs     [] int
 	tick        int
 	tickTime    int
 	lostPackets int
-	conn	    *net.UDPConn
+	conn        *net.UDPConn
 	dst         *net.UDPAddr
 }
 
@@ -81,7 +81,7 @@ func (player *Player) callServer() {
 
 	after := time.Now()
 	player.stateMux.Lock()
-	player.rttLogs = append(player.rttLogs, RTT(before, after))
+	player.RttLogs = append(player.RttLogs, RTT(before, after))
 	//go fmt.Printf("player- response: %d %t\n", response.Id, response.Alive)
 	if response.Tick != player.tick || response.Id != player.id {player.lostPackets++}
 	if response.Alive == false {
@@ -124,7 +124,7 @@ func (player *Player) Run() {
 		//if player.tick == 5000 {player.Alive = false}
 	}
 	time.Sleep(5*time.Second)
-	go fmt.Print(player.rttLogs)
+	go fmt.Print(player.RttLogs)
 	go fmt.Printf("Loss: %d\n", player.lostPackets)
 }
 
@@ -161,7 +161,7 @@ func CreatePlayer(id int) *Player {
 	player.y = rand.Intn(200 - 0)
 	player.actionList = []actioninterfaces.ActionUpdate{}
 	player.players = []gameinterfaces.InGamePlayer{}
-	player.rttLogs = []int{}
+	player.RttLogs = []int{}
 	player.direction = GetRandomDirection()
 	player.tick = 0
 	player.lostPackets = 0
@@ -182,10 +182,10 @@ func RTT(before time.Time, after time.Time) int {
 
 func (player *Player) GetNetworkStats() (int, int, int) {
 	maxRtt := -1
-	for _, rtt := range player.rttLogs {
+	for _, rtt := range player.RttLogs {
 		if rtt > maxRtt {maxRtt = rtt}
 	}
-	lossRate := int(float32(player.lostPackets) * 100 / float32(len(player.rttLogs)))
+	lossRate := int(float32(player.lostPackets) * 100 / float32(len(player.RttLogs)))
 	return player.id, maxRtt, lossRate
 }
 

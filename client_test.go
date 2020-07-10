@@ -1,13 +1,15 @@
 package project
 
 import (
-	"./players"
-	"fmt"
-	"strconv"
-	"testing"
-	"./servers/traditional"
-	"./servers/proposed"
 	"./connection"
+	"./players"
+	"./servers/proposed"
+	"./servers/traditional"
+	"fmt"
+	"io/ioutil"
+	"strconv"
+	"strings"
+	"testing"
 	"time"
 )
 
@@ -27,16 +29,30 @@ func tickToTime(tickRate int) float32 {
 	return float32(1000.0 / tickRate)
 }
 
+func convertRttToString(rttlogs []int) string {
+	var output [] string
+	for _, i := range rttlogs {
+		output = append(output, strconv.Itoa(i))
+	}
+
+	return strings.Join(output, ",")
+}
+
 func displayPlayerStatistics(playerList []*players.Player) {
 	var playerStats []playerStatistic
+	fileOutput := ""
 	for _, player := range playerList {
 		id, maxRtt, lossRate := player.GetNetworkStats()
+		resultEntry := strconv.Itoa(id) + "," + convertRttToString(player.RttLogs) + "\n"
+		fileOutput += resultEntry
 		playerStats = append(playerStats, playerStatistic{
 			playerId: id,
 			maxRtt: maxRtt,
 			lossRate: lossRate,
 		})
 	}
+	fmt.Printf(fileOutput)
+	ioutil.WriteFile("results.csv", []byte(fileOutput), 0644)
 	fmt.Printf("Results: %+v\n", playerStats)
 	maxRtt := -1
 	maxLoss := -1
