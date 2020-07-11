@@ -43,7 +43,7 @@ func displayPlayerStatistics(playerList []*players.Player) {
 	fileOutput := ""
 	for _, player := range playerList {
 		id, maxRtt, lossRate := player.GetNetworkStats()
-		resultEntry := strconv.Itoa(id) + "," + convertRttToString(player.RttLogs) + "\n"
+		resultEntry := convertRttToString(player.RttLogs) + "\n"
 		fileOutput += resultEntry
 		playerStats = append(playerStats, playerStatistic{
 			playerId: id,
@@ -73,7 +73,7 @@ func TestGame_Internal_Traditional(t *testing.T) {
 	artificialDelay := 1
 	gameServer := traditional.StartServer(*conn, artificialDelay)
 	game := gameServer.Game
-	tickTime := int(tickToTime(60))
+	tickTime := int(tickToTime(20))
 	time.Sleep(1*time.Second)
 	fmt.Println(gameServer)
 	var playerList []*players.Player
@@ -133,7 +133,7 @@ func TestGame_Internal_Distributed(t *testing.T) {
 	gameServer := proposed.StartServer(*conn, *workerPool, artificialDelay)
 	game := gameServer.Game
 
-	tickTime := int(tickToTime(30))
+	tickTime := int(tickToTime(10))
 	var playerList []*players.Player
 
 	for i := 0; i < 100; i++ {

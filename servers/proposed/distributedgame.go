@@ -112,24 +112,31 @@ func (game *DistributedGame) listenToWorkers() {
 
 func (game *DistributedGame) showState() {
 	for {
-		//go fmt.Printf("Phase: %d\n", game.phase)
-		go fmt.Printf("%+v\n\n", game.Players)
+		//go fmt.Println(game.Players)
 		alive := -1
+		gameState := ""
 		for i := 0; i < 100; i++ {
+			if i%10 == 0 {
+				gameState += "\n"
+			}
 			if game.Players[i].Alive {
+				gameState += " o "
 				if alive == -1 {
 					alive = i
 				} else if alive > 0 {
 					alive = -2
-					break
+					continue
 				}
+			} else {
+				gameState += " x "
 			}
 		}
+		go fmt.Println(gameState)
 		if alive > 0 {
 			fmt.Printf("The winner is: %d\n", alive)
 			game.phase = 3
 		}
-		time.Sleep(3*time.Second)
+		time.Sleep(500*time.Millisecond)
 	}
 }
 
