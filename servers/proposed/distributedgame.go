@@ -81,6 +81,9 @@ func (game *DistributedGame) sendValidationToWorker(request serverinterfaces.Pla
 		}
 		response.Players = updatedPlayerList
 	}
+	if !game.Players[response.Id].Alive {
+		response.Alive = false
+	}
 	game.mux.Unlock()
 	return response
 }

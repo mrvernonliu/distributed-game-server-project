@@ -42,6 +42,7 @@ func displayPlayerStatistics(playerList []*players.Player) {
 	var playerStats []playerStatistic
 	fileOutput := ""
 	for _, player := range playerList {
+		//fmt.Printf("here %+v\n", player)
 		id, maxRtt, lossRate := player.GetNetworkStats()
 		resultEntry := convertRttToString(player.RttLogs) + "\n"
 		fileOutput += resultEntry
@@ -51,8 +52,13 @@ func displayPlayerStatistics(playerList []*players.Player) {
 			lossRate: lossRate,
 		})
 	}
-	fmt.Printf(fileOutput)
-	ioutil.WriteFile("results.csv", []byte(fileOutput), 0644)
+	//fmt.Printf(fileOutput)
+
+	err := ioutil.WriteFile("results.csv", []byte(fileOutput), 0644)
+	if err != nil {
+		fmt.Printf("error %+v\n", err)
+	}
+
 	fmt.Printf("Results: %+v\n", playerStats)
 	maxRtt := -1
 	maxLoss := -1
@@ -95,7 +101,7 @@ func TestGame_Internal_Traditional(t *testing.T) {
 func TestGame_External_Traditional(t *testing.T) {
 	var serverInfo = ServerInfo{
 		protocol: "udp",
-		address: "10.0.0.55",
+		address: "192.168.0.20",
 		port: "8000",
 	}
 	conn := connection.CreateConnection(serverInfo.protocol, serverInfo.address, serverInfo.port)
@@ -158,7 +164,7 @@ func TestGame_External_Distributed(t *testing.T) {
 		port: "8000",
 	}
 	conn := connection.CreateConnection(serverInfo.protocol, serverInfo.address, serverInfo.port)
-	tickTime := int(tickToTime(60))
+	tickTime := int(tickToTime(20))
 
 	var playerList []*players.Player
 
@@ -169,6 +175,7 @@ func TestGame_External_Distributed(t *testing.T) {
 		time.Sleep(1*time.Millisecond)
 	}
 
-	time.Sleep(30*time.Second)
+	time.Sleep(15*time.Second)
+	fmt.Printf("displaying stats")
 	displayPlayerStatistics(playerList)
 }

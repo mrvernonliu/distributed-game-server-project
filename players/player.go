@@ -115,7 +115,7 @@ func (player *Player) Run() {
 	for {
 		//go fmt.Printf("%d running\n", player.id)
 		if !player.Alive {
-			//go fmt.Printf("%d - eliminated\n", player.id)
+			go fmt.Printf("%d - eliminated\n", player.id)
 			break
 		}
 		player.tick++
