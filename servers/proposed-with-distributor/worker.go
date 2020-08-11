@@ -1,4 +1,4 @@
-package proposed
+package proposedWithDistributor
 
 import (
 	"bytes"

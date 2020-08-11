@@ -5,6 +5,7 @@ import (
 	"./players"
 	"./servers/proposed"
 	"./servers/traditional"
+	"./servers/proposed-with-distributor"
 	"fmt"
 	"io/ioutil"
 	"strconv"
@@ -178,4 +179,60 @@ func TestGame_External_Distributed(t *testing.T) {
 	time.Sleep(15*time.Second)
 	fmt.Printf("displaying stats")
 	displayPlayerStatistics(playerList)
+}
+
+func TestDistributor(t *testing.T) {
+	artificialDelay := 1
+	var workerList []proposedWithDistributor.Worker
+	for i := 5; i < 10; i++ {
+		conn := connection.CreateConnection("udp", "127.0.0.1", "800" + strconv.Itoa(i))
+		worker := proposedWithDistributor.StartWorker(*conn, artificialDelay)
+		workerList = append(workerList, *worker)
+	}
+	workerPool := proposedWithDistributor.CreateWorkerPool(workerList)
+
+	conn := connection.CreateConnection("tcp", "127.0.0.1", "8080")
+	proposedWithDistributor.StartDistributor(*conn, *workerPool)
+
+	workerChannel := make(chan proposedWithDistributor.WorkerAddress, 6)
+	for i := 0; i < 10; i++ {
+		req := proposedWithDistributor.DistributorRequest{
+			Request: "get",
+		}
+		var res proposedWithDistributor.DistributorResponse
+		conn.Call("Distributor.GetWorker", &req, &res)
+		if res.Response == true {
+			fmt.Printf("got worker: %+v\n", res)
+			workerChannel <- proposedWithDistributor.WorkerAddress{
+				Address: res.Address,
+				Port:    res.Port,
+			}
+		}
+	}
+	for i := 0; i < 5; i++ {
+		worker := <- workerChannel
+		req := proposedWithDistributor.DistributorRequest{
+			Request: "put",
+			Address: worker.Address,
+			Port: worker.Port,
+		}
+		fmt.Printf("returning: %+v\n", req)
+		var res proposedWithDistributor.DistributorResponse
+		conn.Call("Distributor.ReturnWorker", &req, &res)
+	}
+
+	for i := 0; i < 10; i++ {
+		req := proposedWithDistributor.DistributorRequest{
+			Request: "get",
+		}
+		var res proposedWithDistributor.DistributorResponse
+		conn.Call("Distributor.GetWorker", &req, &res)
+		if res.Response == true {
+			fmt.Printf("got worker: %+v\n", res)
+			workerChannel <- proposedWithDistributor.WorkerAddress{
+				Address: res.Address,
+				Port:    res.Port,
+			}
+		}
+	}
 }

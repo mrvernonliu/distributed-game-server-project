@@ -1,51 +1,51 @@
-package proposed
+package proposedWithDistributor
 
-import "sync"
+import (
+	"sync"
+)
+
+type WorkerAddress struct {
+	Address string
+	Port string
+}
 
 type WorkerPool struct {
-	activeQueue chan Worker
-	activeMux sync.Mutex
 
-	idleQueue chan Worker
+	idleQueue chan WorkerAddress
 	idleMux sync.Mutex
 }
 
-func (workerPool *WorkerPool) popActive() Worker {
-	workerPool.activeMux.Lock()
-	worker := <- workerPool.activeQueue
-	workerPool.activeMux.Unlock()
-	return worker
-}
 
-func (workerPool *WorkerPool) popIdle() Worker {
+func (workerPool *WorkerPool) popIdle() WorkerAddress {
 	workerPool.idleMux.Lock()
-	worker := <- workerPool.idleQueue
+	var worker WorkerAddress
+	if len(workerPool.idleQueue) > 0 {
+		worker = <- workerPool.idleQueue
+	} else {
+		worker.Address = "-1"
+	}
 	workerPool.idleMux.Unlock()
 	return worker
 }
 
-func (workerPool *WorkerPool) pushActive(worker Worker) {
-	workerPool.activeMux.Lock()
-	workerPool.activeQueue <- worker
-	workerPool.activeMux.Unlock()
-}
 
-func (workerPool *WorkerPool) pushIdle(worker Worker) {
+func (workerPool *WorkerPool) pushIdle(workerAddress WorkerAddress) {
 	workerPool.idleMux.Lock()
-	workerPool.idleQueue <- worker
+	workerPool.idleQueue <- workerAddress
 	workerPool.idleMux.Unlock()
 }
 
 
 func CreateWorkerPool(workerList [] Worker) *WorkerPool {
 	workerPool := WorkerPool{
-		activeQueue: make(chan Worker, len(workerList)),
-		activeMux:   sync.Mutex{},
-		idleQueue:   make(chan Worker, len(workerList)),
+		idleQueue:   make(chan WorkerAddress, len(workerList)),
 		idleMux:     sync.Mutex{},
 	}
 	for _, worker := range workerList {
-		workerPool.idleQueue <- worker
+		workerPool.idleQueue <- WorkerAddress{
+			Address: worker.Address,
+			Port:    worker.Port,
+		}
 	}
 	return &workerPool
 }
