@@ -31,7 +31,6 @@ func (workerPool *WorkerPool) popIdle() WorkerAddress {
 
 func (workerPool *WorkerPool) pushIdle(workerAddress WorkerAddress) {
 	workerPool.idleMux.Lock()
-	workerPool.Count++
 	workerPool.idleQueue <- workerAddress
 	workerPool.idleMux.Unlock()
 }

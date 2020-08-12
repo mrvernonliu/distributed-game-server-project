@@ -19,7 +19,6 @@ func (connection *Connection) Call(rpcname string, args interface{}, reply inter
 	}
 	defer c.Close()
 
-	fmt.Printf("calling %s\n", rpcname)
 	err = c.Call(rpcname, args, reply)
 	if err == nil {
 		return true

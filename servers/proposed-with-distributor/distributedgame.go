@@ -137,9 +137,6 @@ func (game *DistributedGame) updateState(request WorkerResponse) {
 func (game *DistributedGame) listenToWorkers() {
 	for {
 		recvBuf := make([]byte, 1024)
-		if game.conn == nil {
-			fmt.Printf("Bro its nil %+v\n", game)
-		}
 		n, _, _ := game.conn.ReadFromUDP(recvBuf[:])
 		dec := gob.NewDecoder(bytes.NewReader(recvBuf[:n]))
 		response := WorkerResponse{}
@@ -149,8 +146,8 @@ func (game *DistributedGame) listenToWorkers() {
 	}
 }
 
-func (game *DistributedGame) returnWorkers() {
-	for i := 0; i < WORKER_COUNT; i++ {
+func (game *DistributedGame) returnWorkers(numToReturn int) {
+	for i := 0; i < numToReturn; i++ {
 		worker := game.workerPool.popIdle()
 		req := DistributorRequest{
 			Request: "put",
@@ -188,11 +185,15 @@ func (game *DistributedGame) showState() {
 			}
 		}
 
-		go fmt.Println(gameState)
+		if game.workerPool.Count > (aliveCount/10)+1 {
+			game.returnWorkers(1)
+			game.workerPool.Count--
+		}
+		go fmt.Printf("GameId: %d%s\n\n", game.Id, gameState)
 		if alive > 0 {
 			fmt.Printf("The winner is: %d\n", alive)
 			game.phase = 3
-			game.returnWorkers()
+			game.returnWorkers(WORKER_COUNT)
 			break
 		}
 		time.Sleep(500*time.Millisecond)
