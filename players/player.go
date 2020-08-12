@@ -112,7 +112,7 @@ func (player *Player) Run() {
 	for {
 		//go fmt.Printf("%d running\n", player.id)
 		if !player.Alive {
-			go fmt.Printf("%d - eliminated\n", player.id)
+			//go fmt.Printf("%d - eliminated\n", player.id)
 			break
 		}
 		player.tick++
@@ -121,8 +121,8 @@ func (player *Player) Run() {
 		//if player.tick == 5000 {player.Alive = false}
 	}
 	time.Sleep(5*time.Second)
-	go fmt.Print(player.RttLogs)
-	go fmt.Printf("Loss: %d\n", player.lostPackets)
+	//go fmt.Print(player.RttLogs)
+	//go fmt.Printf("Loss: %d\n", player.lostPackets)
 }
 
 // Lets the same number of actions occur regardless of server tick rate

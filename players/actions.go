@@ -40,6 +40,9 @@ func GetRandomDirection() int {
 
 func GetRandomPlayer(id int, players [] gameinterfaces.InGamePlayer) int{
 	randomPlayer := id
+	if len(players) == 0 {
+		return -1
+	}
 	for randomPlayer == id || !players[randomPlayer].Alive {
 		randomPlayer++
 		if randomPlayer >= 100 {

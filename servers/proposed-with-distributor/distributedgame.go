@@ -9,11 +9,12 @@ import (
 	"fmt"
 	"math/rand"
 	"net"
+	"strconv"
 	"sync"
 	"time"
 )
 
-const LOBBY_SIZE = 20
+const LOBBY_SIZE = 30
 const WORKER_COUNT = 3
 
 type DistributedGame struct {
@@ -62,7 +63,9 @@ func (game *DistributedGame) getWorkerPoolFromDistributor() {
 			})
 		} else {
 			i--
+			time.Sleep(500*time.Millisecond)
 		}
+		fmt.Printf("WorkerList: %+v\n", workerList)
 		game.workerPool = *CreateWorkerAddressPool(workerList)
 		//fmt.Printf("got %d worker\n", i)
 	}
@@ -86,6 +89,7 @@ func (game *DistributedGame) sendValidationToWorker(request serverinterfaces.Pla
 				// Get Workers
 				game.getWorkerPoolFromDistributor()
 				game.phase = 1
+				go fmt.Printf("Server %d starting game\n", game.Id)
 				go game.listenToWorkers()
 				go game.showState()
 			}
@@ -133,6 +137,9 @@ func (game *DistributedGame) updateState(request WorkerResponse) {
 func (game *DistributedGame) listenToWorkers() {
 	for {
 		recvBuf := make([]byte, 1024)
+		if game.conn == nil {
+			fmt.Printf("Bro its nil %+v\n", game)
+		}
 		n, _, _ := game.conn.ReadFromUDP(recvBuf[:])
 		dec := gob.NewDecoder(bytes.NewReader(recvBuf[:n]))
 		response := WorkerResponse{}
@@ -142,17 +149,33 @@ func (game *DistributedGame) listenToWorkers() {
 	}
 }
 
+func (game *DistributedGame) returnWorkers() {
+	for i := 0; i < WORKER_COUNT; i++ {
+		worker := game.workerPool.popIdle()
+		req := DistributorRequest{
+			Request: "put",
+			Address: worker.Address,
+			Port: worker.Port,
+		}
+		if worker.Address != "-1" {
+			var res DistributorResponse
+			game.distributor.Call("Distributor.ReturnWorker", &req, &res)
+		}
+	}
+}
 
 func (game *DistributedGame) showState() {
 	for {
 		//go fmt.Println(game.Players)
 		alive := -1
 		gameState := ""
+		aliveCount := 0
 		for i := 0; i < LOBBY_SIZE; i++ {
 			if i%10 == 0 {
 				gameState += "\n"
 			}
 			if game.Players[i].Alive {
+				aliveCount++
 				gameState += " o "
 				if alive == -1 {
 					alive = i
@@ -164,11 +187,13 @@ func (game *DistributedGame) showState() {
 				gameState += " x "
 			}
 		}
+
 		go fmt.Println(gameState)
-		go fmt.Println(game.phase)
 		if alive > 0 {
 			fmt.Printf("The winner is: %d\n", alive)
 			game.phase = 3
+			game.returnWorkers()
+			break
 		}
 		time.Sleep(500*time.Millisecond)
 	}
@@ -178,11 +203,7 @@ func (game *DistributedGame) IsFinished() bool {
 	return game.phase == 3
 }
 
-func (game *DistributedGame) ResetGame() {
-
-}
-
-func CreateGame(artificialDelay int, distributor connection.Connection) *DistributedGame {
+func CreateGame(artificialDelay int, distributor connection.Connection, port int) *DistributedGame {
 	fmt.Println("Creating distributed game")
 	rand.Seed(time.Now().UTC().UnixNano())
 	game := DistributedGame{}
@@ -193,7 +214,7 @@ func CreateGame(artificialDelay int, distributor connection.Connection) *Distrib
 	game.artificialDelay = time.Duration(artificialDelay) * time.Nanosecond
 	game.distributor = distributor
 
-	game.dst, _ = net.ResolveUDPAddr("udp", ":"+"8001")
+	game.dst, _ = net.ResolveUDPAddr("udp", ":"+strconv.Itoa(port))
 	game.conn, _ = net.ListenUDP("udp", game.dst)
 	go game.showState()
 

@@ -10,7 +10,7 @@ type WorkerAddress struct {
 }
 
 type WorkerPool struct {
-	count int
+	Count int
 	idleQueue chan WorkerAddress
 	idleMux sync.Mutex
 }
@@ -31,18 +31,19 @@ func (workerPool *WorkerPool) popIdle() WorkerAddress {
 
 func (workerPool *WorkerPool) pushIdle(workerAddress WorkerAddress) {
 	workerPool.idleMux.Lock()
+	workerPool.Count++
 	workerPool.idleQueue <- workerAddress
 	workerPool.idleMux.Unlock()
 }
 
 func CreateWorkerAddressPool(workerList []WorkerAddress) *WorkerPool {
 	workerPool := WorkerPool{
-		count :		 0,
+		Count :		 0,
 		idleQueue:   make(chan WorkerAddress, len(workerList)),
 		idleMux:     sync.Mutex{},
 	}
 	for _, worker := range workerList {
-		workerPool.count++
+		workerPool.Count++
 		workerPool.idleQueue <- worker
 	}
 	return &workerPool
@@ -51,12 +52,12 @@ func CreateWorkerAddressPool(workerList []WorkerAddress) *WorkerPool {
 
 func CreateWorkerPool(workerList [] Worker) *WorkerPool {
 	workerPool := WorkerPool{
-		count :		 0,
+		Count :		 0,
 		idleQueue:   make(chan WorkerAddress, len(workerList)),
 		idleMux:     sync.Mutex{},
 	}
 	for _, worker := range workerList {
-		workerPool.count++
+		workerPool.Count++
 		workerPool.idleQueue <- WorkerAddress{
 			Address: worker.Address,
 			Port:    worker.Port,

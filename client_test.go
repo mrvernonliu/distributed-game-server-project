@@ -259,27 +259,48 @@ func TestGame_Internal_Distributed_with_Distributor (t *testing.T) {
 	distributorConn := connection.CreateConnection("tcp", "127.0.0.1", "8080")
 	proposedWithDistributor.StartDistributor(*distributorConn, *workerPool)
 
-	// Create Game
-	var serverInfo = ServerInfo{
+	tickTime := int(tickToTime(10))
+
+	// Create Game 1
+	var serverInfo1 = ServerInfo{
 		protocol: "udp",
 		address: "127.0.0.1",
 		port: "8000",
 	}
-	gameServerConn := connection.CreateConnection(serverInfo.protocol, serverInfo.address, serverInfo.port)
-	gameServer := proposedWithDistributor.StartServer(*gameServerConn, artificialDelay, *distributorConn)
-	game := gameServer.Game
+	gameServerConn1 := connection.CreateConnection(serverInfo1.protocol, serverInfo1.address, serverInfo1.port)
+	gameServer1 := proposedWithDistributor.StartServer(*gameServerConn1, artificialDelay, *distributorConn)
+	game1 := gameServer1.Game
+	var playerList1 []*players.Player
 
-	tickTime := int(tickToTime(10))
-	var playerList []*players.Player
-
-	for i := 0; i < 20; i++ {
+	for i := 0; i < 30; i++ {
 		player := players.CreatePlayer(i)
-		playerList = append(playerList, player)
-		go player.JoinGame(gameServerConn, tickTime)
+		playerList1 = append(playerList1, player)
+		go player.JoinGame(gameServerConn1, tickTime)
 		time.Sleep(1*time.Millisecond)
 	}
 
-	for !game.IsFinished() {
+	// Create Game 2
+	var serverInfo2 = ServerInfo{
+		protocol: "udp",
+		address: "127.0.0.1",
+		port: "8002",
+	}
+	gameServerConn2 := connection.CreateConnection(serverInfo2.protocol, serverInfo2.address, serverInfo2.port)
+	gameServer2 := proposedWithDistributor.StartServer(*gameServerConn2, artificialDelay, *distributorConn)
+	game2 := gameServer2.Game
+	var playerList2 []*players.Player
+
+	for i := 0; i < 30; i++ {
+		player := players.CreatePlayer(i)
+		playerList2 = append(playerList2, player)
+		go player.JoinGame(gameServerConn2, tickTime)
+		time.Sleep(1*time.Millisecond)
+	}
+
+	for !game1.IsFinished() {
+		time.Sleep(5*time.Second)
+	}
+	for !game2.IsFinished() {
 		time.Sleep(5*time.Second)
 	}
 }

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"math/rand"
 	"net"
+	"strconv"
 	"time"
 	"../serverinterfaces"
 )
@@ -53,7 +54,10 @@ func StartServer(connection connection.Connection, artificalDelay int, distribut
 	server.Id = rand.Int()
 	server.dst, _ = net.ResolveUDPAddr("udp", ":"+connection.Port)
 	server.conn, _ = net.ListenUDP("udp", server.dst)
-	server.Game = CreateGame(artificalDelay, distributor)
+
+	gamePort, _ := strconv.Atoi(connection.Port)
+	gamePort += 1000
+	server.Game = CreateGame(artificalDelay, distributor, gamePort)
 
 	go server.serve()
 	return &server
