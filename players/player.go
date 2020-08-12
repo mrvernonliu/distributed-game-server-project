@@ -82,7 +82,7 @@ func (player *Player) callServer() {
 	after := time.Now()
 	player.stateMux.Lock()
 	player.RttLogs = append(player.RttLogs, RTT(before, after))
-	//go fmt.Printf("player- response: %d %t\n", response.Id, response.Alive)
+	//go fmt.Printf("player- response: %+v\n", response)
 	if response.Tick != player.tick || response.Id != player.id {player.lostPackets++}
 	if response.Alive == false {
 		player.Alive = false
@@ -91,6 +91,7 @@ func (player *Player) callServer() {
 	if response.Tick == player.tick && response.Id == player.id {
 		player.players = response.Players
 	}
+	player.phase = response.GamePhase
 
 	player.stateMux.Unlock()
 
@@ -101,13 +102,9 @@ func (player *Player) callServer() {
 }
 
 func (player *Player) setAction() {
-	//player.actionMux.Lock()
-	//fmt.Println("in setAction mux")
 	actionUpdate := GetRandomAction(player.id, player.players)
 	if actionUpdate.Action == -1 {return}
 	player.actionList = append(player.actionList, actionUpdate)
-	//go fmt.Println(player.actionList)
-	//player.actionMux.Unlock()
 }
 
 func (player *Player) Run() {
@@ -134,7 +131,7 @@ func (player *Player) AsyncSetActions() {
 		if !player.Alive {
 			break
 		}
-		if len(player.players) == 100 {
+		if player.phase == 1 {
 			go player.setAction()
 		}
 		time.Sleep(500*time.Millisecond);

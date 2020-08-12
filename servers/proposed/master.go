@@ -28,11 +28,10 @@ func (server *Master) serve() error {
 		dec := gob.NewDecoder(bytes.NewReader(recvBuf[:n]))
 		request := serverinterfaces.PlayerRequest{}
 		dec.Decode(&request)
-		//go fmt.Printf("Server - request: %+v %+v\n", request, request.ActionList)
+		go fmt.Printf("Server - request: %+v %+v\n", request, request.ActionList)
 
 		//Make response
 		response := server.Game.sendValidationToWorker(request)
-
 		//go fmt.Printf("server- response: %+v\n", response)
 		//go fmt.Printf("server- response: %d %t\n", response.Id, response.Alive)
 

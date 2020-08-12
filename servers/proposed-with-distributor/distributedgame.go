@@ -1,6 +1,9 @@
 package proposedWithDistributor
 
 import (
+	"../../connection"
+	"../../game/gameinterfaces"
+	"../../servers/serverinterfaces"
 	"bytes"
 	"encoding/gob"
 	"fmt"
@@ -8,11 +11,11 @@ import (
 	"net"
 	"sync"
 	"time"
-	"../../game/gameinterfaces"
-	"../../servers/serverinterfaces"
 )
 
 const LOBBY_SIZE = 20
+const WORKER_COUNT = 3
+
 type DistributedGame struct {
 	Id int
 
@@ -23,6 +26,7 @@ type DistributedGame struct {
 	Players map[int]gameinterfaces.InGamePlayer
 
 	workerPool WorkerPool
+	distributor connection.Connection
 	conn *net.UDPConn
 	dst  *net.UDPAddr
 }
@@ -41,6 +45,29 @@ func populateServerResponse(request serverinterfaces.PlayerRequest, phase int) s
 	}
 }
 
+func (game *DistributedGame) getWorkerPoolFromDistributor() {
+	var workerList []WorkerAddress
+	for i := 0; i < WORKER_COUNT; i++ {
+		req := DistributorRequest{
+			Request: "get",
+		}
+		var res DistributorResponse
+
+		game.distributor.Call("Distributor.GetWorker", &req, &res)
+		if res.Response == true {
+			fmt.Printf("got worker %+v\n", res)
+			workerList = append(workerList, WorkerAddress{
+				Address: res.Address,
+				Port:    res.Port,
+			})
+		} else {
+			i--
+		}
+		game.workerPool = *CreateWorkerAddressPool(workerList)
+		//fmt.Printf("got %d worker\n", i)
+	}
+}
+
 func (game *DistributedGame) sendValidationToWorker(request serverinterfaces.PlayerRequest) serverinterfaces.ServerResponse {
 	response := populateServerResponse(request, game.phase)
 	//go fmt.Printf("Game got request: %+v\n", request)
@@ -56,6 +83,8 @@ func (game *DistributedGame) sendValidationToWorker(request serverinterfaces.Pla
 				Alive:            true,
 			}
 			if len(game.Players) == LOBBY_SIZE {
+				// Get Workers
+				game.getWorkerPoolFromDistributor()
 				game.phase = 1
 				go game.listenToWorkers()
 				go game.showState()
@@ -136,6 +165,7 @@ func (game *DistributedGame) showState() {
 			}
 		}
 		go fmt.Println(gameState)
+		go fmt.Println(game.phase)
 		if alive > 0 {
 			fmt.Printf("The winner is: %d\n", alive)
 			game.phase = 3
@@ -152,7 +182,7 @@ func (game *DistributedGame) ResetGame() {
 
 }
 
-func CreateGame(workerPool WorkerPool, artificialDelay int) *DistributedGame {
+func CreateGame(artificialDelay int, distributor connection.Connection) *DistributedGame {
 	fmt.Println("Creating distributed game")
 	rand.Seed(time.Now().UTC().UnixNano())
 	game := DistributedGame{}
@@ -161,7 +191,7 @@ func CreateGame(workerPool WorkerPool, artificialDelay int) *DistributedGame {
 	game.phase = 0
 	game.mux = sync.Mutex{}
 	game.artificialDelay = time.Duration(artificialDelay) * time.Nanosecond
-	game.workerPool = workerPool
+	game.distributor = distributor
 
 	game.dst, _ = net.ResolveUDPAddr("udp", ":"+"8001")
 	game.conn, _ = net.ListenUDP("udp", game.dst)

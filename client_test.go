@@ -153,6 +153,9 @@ func TestGame_Internal_Distributed(t *testing.T) {
 	for !game.IsFinished() {
 		time.Sleep(5*time.Second)
 	}
+	for _, worker := range workerList {
+		worker.Kill()
+	}
 
 	displayPlayerStatistics(playerList)
 }
@@ -182,6 +185,11 @@ func TestGame_External_Distributed(t *testing.T) {
 }
 
 func TestDistributor(t *testing.T) {
+	/*
+		Grabs more workers than necessary, then returns all the workers,
+		then grabs more than necessary.
+		If it hangs then it fails, should be able to continue working if worker cannot be grabbed
+	 */
 	artificialDelay := 1
 	var workerList []proposedWithDistributor.Worker
 	for i := 5; i < 10; i++ {
@@ -234,5 +242,44 @@ func TestDistributor(t *testing.T) {
 				Port:    res.Port,
 			}
 		}
+	}
+}
+
+func TestGame_Internal_Distributed_with_Distributor (t *testing.T) {
+	// Create Distributor
+	artificialDelay := 1
+	var workerList []proposedWithDistributor.Worker
+	for i := 5; i < 10; i++ {
+		conn := connection.CreateConnection("udp", "127.0.0.1", "800" + strconv.Itoa(i))
+		worker := proposedWithDistributor.StartWorker(*conn, artificialDelay)
+		workerList = append(workerList, *worker)
+	}
+	workerPool := proposedWithDistributor.CreateWorkerPool(workerList)
+
+	distributorConn := connection.CreateConnection("tcp", "127.0.0.1", "8080")
+	proposedWithDistributor.StartDistributor(*distributorConn, *workerPool)
+
+	// Create Game
+	var serverInfo = ServerInfo{
+		protocol: "udp",
+		address: "127.0.0.1",
+		port: "8000",
+	}
+	gameServerConn := connection.CreateConnection(serverInfo.protocol, serverInfo.address, serverInfo.port)
+	gameServer := proposedWithDistributor.StartServer(*gameServerConn, artificialDelay, *distributorConn)
+	game := gameServer.Game
+
+	tickTime := int(tickToTime(10))
+	var playerList []*players.Player
+
+	for i := 0; i < 20; i++ {
+		player := players.CreatePlayer(i)
+		playerList = append(playerList, player)
+		go player.JoinGame(gameServerConn, tickTime)
+		time.Sleep(1*time.Millisecond)
+	}
+
+	for !game.IsFinished() {
+		time.Sleep(5*time.Second)
 	}
 }

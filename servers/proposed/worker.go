@@ -19,6 +19,8 @@ type Worker struct {
 	Dst     *net.UDPAddr
 	Address string
 	Port    string
+
+	alive	bool
 }
 
 
@@ -71,6 +73,9 @@ func updatePlayers(workerRequest WorkerRequest) WorkerResponse {
 func (worker *Worker) serve() {
 	fmt.Printf("Worker %d listening\n", worker.Id)
 	for {
+		if !worker.alive {
+			break
+		}
 		// Read from UDP
 		recvBuf := make([]byte, 4096)
 		n, client, _ := worker.Conn.ReadFromUDP(recvBuf[:])
@@ -87,6 +92,10 @@ func (worker *Worker) serve() {
 	}
 }
 
+func (worker *Worker) Kill() {
+	worker.alive = false
+}
+
 
 func StartWorker(connection connection.Connection, artificalDelay int) *Worker {
 	rand.Seed(time.Now().UTC().UnixNano())
@@ -96,7 +105,7 @@ func StartWorker(connection connection.Connection, artificalDelay int) *Worker {
 	worker.Port = connection.Port
 	worker.Dst, _ = net.ResolveUDPAddr("udp", ":"+connection.Port)
 	worker.Conn, _ = net.ListenUDP("udp", worker.Dst)
-
+	worker.alive = true
 	go worker.serve()
 	return &worker
 }

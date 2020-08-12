@@ -35,7 +35,7 @@ func (server *Master) serve() error {
 
 		//go fmt.Printf("server- response: %+v\n", response)
 		//go fmt.Printf("server- response: %d %t\n", response.Id, response.Alive)
-
+		//go fmt.Printf("%+v\n", client)
 		//send response
 		var sendBuf bytes.Buffer
 		encoder := gob.NewEncoder(&sendBuf)
@@ -47,13 +47,13 @@ func (server *Master) serve() error {
 }
 
 
-func StartServer(connection connection.Connection, workerPool WorkerPool, artificalDelay int) *Master {
+func StartServer(connection connection.Connection, artificalDelay int, distributor connection.Connection) *Master {
 	rand.Seed(time.Now().UTC().UnixNano())
 	server := Master{}
 	server.Id = rand.Int()
 	server.dst, _ = net.ResolveUDPAddr("udp", ":"+connection.Port)
 	server.conn, _ = net.ListenUDP("udp", server.dst)
-	server.Game = CreateGame(workerPool, artificalDelay)
+	server.Game = CreateGame(artificalDelay, distributor)
 
 	go server.serve()
 	return &server
